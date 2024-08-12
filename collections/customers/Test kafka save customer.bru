@@ -1,0 +1,19 @@
+meta {
+  name: Test kafka save customer
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:8080/v1/customers
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "id": "1",
+    "name": "Jonathan",
+    "email": "hello@gmail.com"
+  }
+}
