@@ -1,4 +1,4 @@
-package com.devtiro.kafkatutorial.config;
+package com.devtiro.kafkatutorial.kafka.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -9,17 +9,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Configuration
-@ConfigurationProperties(prefix = "devtiro.kafka")
+@ConfigurationProperties(prefix = "custom.kafka")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class KafkaConfigProps {
-    private String topic;
     private String bootstrapAddress;
-    private String keySerializer;
-    private String valueSerializer;
-    private String keyDeserializer;
-    private String valueDeserializer;
-    private String groupId;
+
+    private String logTopicName;
+    private String customerTopicName;
+
+    private String logGroupId;
+    private String customerGroupId;
 }
