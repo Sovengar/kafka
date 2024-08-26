@@ -1,22 +1,26 @@
 package com.devtiro.kafkatutorial.customer.application;
 
-import com.devtiro.kafkatutorial.kafka.config.KafkaConfigProps;
 import com.devtiro.kafkatutorial.customer.domain.Customer;
 import com.devtiro.kafkatutorial.customer.events.CustomerCreatedEvent;
+import com.devtiro.kafkatutorial.kafka.config.KafkaConfigProps;
 import com.devtiro.kafkatutorial.kafka.events.Event;
 import com.devtiro.kafkatutorial.kafka.events.EventType;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
-import org.springframework.stereotype.Component;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -78,6 +82,41 @@ public class CustomerEventsService {
         long offset = record.offset();
         log.info("Received Message: {} from partition: {} at offset: {}", message, partition, offset);
     }
+
+    //If we don’t need to set the offset, we can use the partitions property of @TopicPartition annotation to set only the partitions without the offset
+    @KafkaListener(
+            topics = "${custom.kafka.logTopicName}",
+            //groupId = "${custom.kafka.logGroupId}",
+            containerFactory = "kafkaListenerContainerFactory",
+            topicPartitions = @TopicPartition(topic = "topicName", partitions = {"0", "1"})
+    )
+    public void consumeFromPartition1And2(@Payload String message, ConsumerRecord<?, ?> record) {
+        int partition = record.partition();
+        long offset = record.offset();
+        log.info("Received Message: {} from partition: {} at offset: {}", message, partition, offset);
+    }
+
+    @RetryableTopic(
+            attempts = "4",
+            backoff = @Backoff(delay = 1000, multiplier = 2, maxDelay = 10000),
+            exclude = {NullPointerException.class, IOException.class}
+    )
+    @KafkaListener(
+            topics = "${custom.kafka.logTopicName}",
+            //groupId = "${custom.kafka.logGroupId}",
+            containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void consumeButThrowsError(@Payload String message) {
+        throw new RuntimeException(message);
+    }
+
+
+    @DltHandler
+    public void listenDLT(@Payload String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, ConsumerRecord<?, ?> record) {
+        int partition = record.partition();
+        long offset = record.offset();
+        log.info("DLT Received : {} , from topic: {} , from partition: {} at offset: {}", message, topic, partition, offset);
+    }
 }
 
 //@KafkaListener(
@@ -88,6 +127,4 @@ public class CustomerEventsService {
 //        containerFactory = "partitionsKafkaListenerContainerFactory")
 
 //Since the initialOffset has been set to 0 in this listener, all the previously consumed messages from partitions 0 and 3 will be re-consumed every time this listener is initialized.
-//If we don’t need to set the offset, we can use the partitions property of @TopicPartition annotation to set only the partitions without the offset:
 
-//@KafkaListener(topicPartitions = @TopicPartition(topic = "topicName", partitions = { "0", "1" }))
